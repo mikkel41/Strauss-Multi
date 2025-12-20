@@ -36,7 +36,7 @@ def intro_animation():
 
     a = 0
     b = 0
-    scale = min(w, h) / 550
+    scale = min(w, h) / 625
 
     t.penup()
     t.goto(0, h // 2 - 120)
@@ -231,3 +231,4 @@ while True:
         time.sleep(2)
 
 main_menu(permission)
+
