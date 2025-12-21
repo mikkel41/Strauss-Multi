@@ -36,7 +36,7 @@ def intro_animation():
 
     a = 0
     b = 0
-    scale = min(w, h) / 700
+    scale = min(w, h) / 800
 
     t.penup()
     t.goto(0, h // 2 - 120)
@@ -172,6 +172,12 @@ def admin_panel():
     p("• Monitoring enabled")
     input("\nPress Enter...")
 
+def ip_lookup():
+    clear()
+    p("IP-LookUP\n")
+    p("• Full access granted")
+    input("\nEnter IP...")
+
 # =========================
 # Menu
 # =========================
@@ -191,6 +197,8 @@ def main_menu(permission):
 
         if permission == "admin":
             p("[4] Admin Panel")
+        if permission == "admin":
+            p("[5] IP LookUP")
 
         p("[0] Exit\n")
 
@@ -202,8 +210,10 @@ def main_menu(permission):
             wifi_scan()
         elif choice == "3" and permission in ("vip", "admin"):
             ip_tool()
-        elif choice == "4" and permission == "admin":
+        elif choice == "4" and permission == "admin":      
             admin_panel()
+        elif choice == "5" and permission == "admin":
+            ip_lookup()
         elif choice == "0":
             break
         else:
@@ -231,5 +241,3 @@ while True:
         time.sleep(2)
 
 main_menu(permission)
-
-
