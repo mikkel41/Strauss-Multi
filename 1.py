@@ -14,7 +14,8 @@ import re
 # Console title
 # =========================
 def set_console_title(title):
-    os.system(f'title "{title}"')
+    if os.name == "nt":
+        os.system(f'title "{title}"')
 
 # =========================
 # Turtle intro animation
@@ -74,12 +75,11 @@ ASCII_HEADER = r"""
  \_____  \\   __\_  __ \__  \ |  |  \/  ___//  ___/  /  /_\  \   __\   __\__  \ _/ ___\|  |/ /
  /        \|  |  |  | \// __ \|  |  /\___ \ \___ \  /    |    \  |  |  |  / __ \\  \___|    <
 /_______  /|__|  |__|  (____  /____//____  >____  > \____|__  /__|  |__| (____  /\___  >__|_ \
-        \/                  \/           \/     \/          \/                \/     \/     
-
+        \/                  \/           \/     \/          \/                \/     \/      
 """
 
 # =========================
-# Google Sheet check (kode + permission)
+# Google Sheet: login check
 # =========================
 def check_code_google_sheet(user_code):
     SHEET_ID = "1sR8bO58zUTqqYKn0YRaOq-ta2HsgQsXf0FP6DVhARSE"
@@ -92,17 +92,39 @@ def check_code_google_sheet(user_code):
         reader = csv.reader(response.text.splitlines())
         for row in reader:
             if len(row) >= 2:
-                code = row[0].strip()
-                permission = row[1].strip().lower()
-                if user_code == code:
-                    return True, permission
+                if user_code == row[0].strip():
+                    return True, row[1].strip().lower()
 
         return False, None
-    except Exception:
+    except:
         return False, None
 
 # =========================
-# WiFi device scanner
+# Google Sheet: Discord DB
+# =========================
+def search_discord_id_in_sheet(discord_id):
+    SHEET_ID = "1SywSyu3ynW9cnc_WoSed7CiMSLEWeKiKUI2XR7BfLhY"
+    url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
+
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+
+        reader = csv.reader(response.text.splitlines())
+        headers = next(reader)
+
+        search_value = f"discord:{discord_id}".lower()
+
+        for row in reader:
+            if search_value in " ".join(row).lower():
+                return headers, row  # ← første match
+
+        return None, None
+    except:
+        return None, None
+
+# =========================
+# WiFi scan
 # =========================
 def wifi_scan():
     clear()
@@ -111,34 +133,27 @@ def wifi_scan():
 
     try:
         output = subprocess.check_output("arp -a", shell=True, text=True)
-        ips = list(set(re.findall(r"\d+\.\d+\.\d+\.\d+", output)))
+        ips = sorted(set(re.findall(r"\d+\.\d+\.\d+\.\d+", output)))
     except:
-        p("Failed to read ARP table")
+        p("Failed to scan network.")
         input("\nPress Enter...")
         return
 
-    p(f"{'IP Address':<18} {'Ping':<10} Device Name")
+    p(f"{'IP':<18} {'Ping':<10} Device")
     p("-" * 60)
 
     for ip in ips:
-        # Ping
         try:
-            ping_out = subprocess.check_output(
-                f"ping -n 1 -w 500 {ip}",
-                shell=True,
-                text=True,
-                stderr=subprocess.DEVNULL
-            )
-            ping_match = re.search(r"(\d+)ms", ping_out)
-            ping_time = ping_match.group(1) + " ms" if ping_match else "Timeout"
+            ping_out = subprocess.check_output(f"ping -n 1 -w 500 {ip}", shell=True, text=True)
+            ping = re.search(r"(\d+)ms", ping_out)
+            ping_time = ping.group(1) + " ms" if ping else "Timeout"
         except:
             ping_time = "Timeout"
 
-        # Hostname
         try:
             hostname = socket.gethostbyaddr(ip)[0]
         except:
-            hostname = "Unknown device"
+            hostname = "Unknown"
 
         p(f"{ip:<18} {ping_time:<10} {hostname}")
 
@@ -153,12 +168,10 @@ def system_scan():
     for i in range(0, 101, 10):
         p(f"[{i}%] Processing")
         time.sleep(0.2)
-    p("\nScan complete.")
     input("\nPress Enter...")
 
 def ip_tool():
     clear()
-    p("IP Lookup Tool\n")
     ip = input(PURPLE + "Enter IP: " + RESET)
     p(f"\nTarget: {ip}")
     p("Country: UNKNOWN")
@@ -168,15 +181,26 @@ def ip_tool():
 def admin_panel():
     clear()
     p("ADMIN PANEL\n")
-    p("• Full access granted")
-    p("• Monitoring enabled")
+    p("• Full access")
     input("\nPress Enter...")
 
-def ip_lookup():
+def discord_lookup():
     clear()
-    p("IP-LookUP\n")
-    p("• Full access granted")
-    input("\nEnter IP...")
+    p("DISCORD DATABASE LOOKUP\n")
+    discord_id = input(PURPLE + "Enter Discord ID: " + RESET)
+
+    headers, row = search_discord_id_in_sheet(discord_id)
+
+    if not row:
+        p("\nNo results found.")
+        input("\nPress Enter...")
+        return
+
+    p("\nMATCH FOUND:\n")
+    for h, v in zip(headers, row):
+        p(f"{h}: {v}")
+
+    input("\nPress Enter...")
 
 # =========================
 # Menu
@@ -197,8 +221,7 @@ def main_menu(permission):
 
         if permission == "admin":
             p("[4] Admin Panel")
-        if permission == "admin":
-            p("[5] IP LookUP")
+            p("[5] Discord Lookup")
 
         p("[0] Exit\n")
 
@@ -210,10 +233,10 @@ def main_menu(permission):
             wifi_scan()
         elif choice == "3" and permission in ("vip", "admin"):
             ip_tool()
-        elif choice == "4" and permission == "admin":      
+        elif choice == "4" and permission == "admin":
             admin_panel()
         elif choice == "5" and permission == "admin":
-            ip_lookup()
+            discord_lookup()
         elif choice == "0":
             break
         else:
