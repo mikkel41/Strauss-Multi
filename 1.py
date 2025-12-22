@@ -92,9 +92,8 @@ def check_code_google_sheet(user_code):
 
         reader = csv.reader(response.text.splitlines())
         for row in reader:
-            if len(row) >= 2:
-                if user_code == row[0].strip():
-                    return True, row[1].strip().lower()
+            if len(row) >= 2 and user_code == row[0].strip():
+                return True, row[1].strip().lower()
 
         return False, None
     except:
@@ -118,7 +117,7 @@ def search_discord_id_in_sheet(discord_id):
 
         for row in reader:
             if search_value in " ".join(row).lower():
-                return headers, row  # ← første match
+                return headers, row
 
         return None, None
     except:
@@ -160,13 +159,55 @@ def wifi_scan():
 
     input("\nPress Enter...")
 
-#==========================
-#Ip Pinger
-#==========================
+# =========================
+# IP Pinger (simple)
+# =========================
 def ipping():
     clear()
-    p("IP Pinger")
-    input("\nEnter IP: ")
+    ip = input(PURPLE + "Enter IP to ping: " + RESET)
+
+    try:
+        subprocess.call(f"ping {ip}", shell=True)
+    except:
+        p("Ping failed.")
+
+    input("\nPress Enter...")
+
+# =========================
+# IP Lookup
+# =========================
+def ip_lookup():
+    clear()
+    ip = input(PURPLE + "Enter IP for lookup: " + RESET)
+
+    if not re.match(r"^\d{1,3}(\.\d{1,3}){3}$", ip):
+        p("\nInvalid IP format.")
+        input("\nPress Enter...")
+        return
+
+    try:
+        url = f"http://ip-api.com/json/{ip}?fields=status,country,regionName,city,zip,lat,lon,isp,org,as"
+        data = requests.get(url, timeout=5).json()
+
+        if data.get("status") != "success":
+            p("\nLookup failed.")
+            input("\nPress Enter...")
+            return
+
+        p("\nIP LOOKUP RESULT\n")
+        p(f"Country : {data['country']}")
+        p(f"Region  : {data['regionName']}")
+        p(f"City    : {data['city']}")
+        p(f"ZIP     : {data['zip']}")
+        p(f"ISP     : {data['isp']}")
+        p(f"ORG     : {data['org']}")
+        p(f"AS      : {data['as']}")
+        p(f"Coords  : {data['lat']}, {data['lon']}")
+
+    except:
+        p("\nFailed to fetch IP info.")
+
+    input("\nPress Enter...")
 
 # =========================
 # Fake tools
@@ -210,12 +251,6 @@ def discord_lookup():
         p(f"{h}: {v}")
 
     input("\nPress Enter...")
-    
-def ipping():
-    clear()
-    p("IP Pinger")
-    input("\nEnter IP: ")
-
 
 # =========================
 # Menu
@@ -230,15 +265,13 @@ def main_menu(permission):
 
         p("[1] System Scan")
         p("[2] WiFi Device Scan")
-
-        if permission in ("vip", "admin"):
-            p("[3] IP Information")
-            p("[6] IP Pinger")
+        p("[3] IP Information")
+        p("[6] IP Pinger")
+        p("[7] IP Lookup")
 
         if permission == "admin":
             p("[4] Admin Panel")
             p("[5] Discord Lookup")
-            p("[6] IP Pinger")
 
         p("[0] Exit\n")
 
@@ -248,14 +281,16 @@ def main_menu(permission):
             system_scan()
         elif choice == "2":
             wifi_scan()
-        elif choice == "3" and permission in ("vip", "admin"):
+        elif choice == "3":
             ip_tool()
         elif choice == "4" and permission == "admin":
             admin_panel()
         elif choice == "5" and permission == "admin":
             discord_lookup()
-        elif choice == "6" and permission == ("vip", "admin"):
+        elif choice == "6":
             ipping()
+        elif choice == "7":
+            ip_lookup()
         elif choice == "0":
             break
         else:
