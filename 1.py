@@ -9,6 +9,7 @@ import csv
 import subprocess
 import socket
 import re
+import sys
 
 # =========================
 # Console title
@@ -159,6 +160,14 @@ def wifi_scan():
 
     input("\nPress Enter...")
 
+#==========================
+#Ip Pinger
+#==========================
+def ipping():
+    clear()
+    p("IP Pinger")
+    input("\nEnter IP: ")
+
 # =========================
 # Fake tools
 # =========================
@@ -201,6 +210,12 @@ def discord_lookup():
         p(f"{h}: {v}")
 
     input("\nPress Enter...")
+    
+def ipping():
+    clear()
+    p("IP Pinger")
+    input("\nEnter IP: ")
+
 
 # =========================
 # Menu
@@ -218,10 +233,12 @@ def main_menu(permission):
 
         if permission in ("vip", "admin"):
             p("[3] IP Information")
+            p("[6] IP Pinger")
 
         if permission == "admin":
             p("[4] Admin Panel")
             p("[5] Discord Lookup")
+            p("[6] IP Pinger")
 
         p("[0] Exit\n")
 
@@ -237,6 +254,8 @@ def main_menu(permission):
             admin_panel()
         elif choice == "5" and permission == "admin":
             discord_lookup()
+        elif choice == "6" and permission == ("vip", "admin"):
+            ipping()
         elif choice == "0":
             break
         else:
