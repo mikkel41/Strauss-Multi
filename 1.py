@@ -45,7 +45,6 @@ def intro_animation():
     t.pendown()
 
     turtle.tracer(0)
-
     while b < 220:
         t.forward(a * scale)
         t.right(b)
@@ -89,8 +88,8 @@ def check_code_google_sheet(user_code):
     try:
         response = requests.get(url, timeout=5)
         response.raise_for_status()
-
         reader = csv.reader(response.text.splitlines())
+
         for row in reader:
             if len(row) >= 2 and user_code == row[0].strip():
                 return True, row[1].strip().lower()
@@ -109,10 +108,9 @@ def search_discord_id_in_sheet(discord_id):
     try:
         response = requests.get(url, timeout=10)
         response.raise_for_status()
-
         reader = csv.reader(response.text.splitlines())
-        headers = next(reader)
 
+        headers = next(reader)
         search_value = f"discord:{discord_id}".lower()
 
         for row in reader:
@@ -144,7 +142,9 @@ def wifi_scan():
 
     for ip in ips:
         try:
-            ping_out = subprocess.check_output(f"ping -n 1 -w 500 {ip}", shell=True, text=True)
+            ping_out = subprocess.check_output(
+                f"ping -n 1 -w 500 {ip}", shell=True, text=True
+            )
             ping = re.search(r"(\d+)ms", ping_out)
             ping_time = ping.group(1) + " ms" if ping else "Timeout"
         except:
@@ -160,17 +160,15 @@ def wifi_scan():
     input("\nPress Enter...")
 
 # =========================
-# IP Pinger (simple)
+# IP Pinger
 # =========================
 def ipping():
     clear()
     ip = input(PURPLE + "Enter IP to ping: " + RESET)
-
     try:
         subprocess.call(f"ping {ip}", shell=True)
     except:
         p("Ping failed.")
-
     input("\nPress Enter...")
 
 # =========================
@@ -210,6 +208,45 @@ def ip_lookup():
     input("\nPress Enter...")
 
 # =========================
+# VPN / Proxy Checker
+# =========================
+def vpn_check():
+    clear()
+    ip = input(PURPLE + "Enter IP to check VPN/Proxy: " + RESET)
+
+    if not re.match(r"^\d{1,3}(\.\d{1,3}){3}$", ip):
+        p("\nInvalid IP format.")
+        input("\nPress Enter...")
+        return
+
+    try:
+        url = f"http://ip-api.com/json/{ip}?fields=status,country,isp,org,proxy,hosting,mobile"
+        data = requests.get(url, timeout=5).json()
+
+        if data.get("status") != "success":
+            p("\nLookup failed.")
+            input("\nPress Enter...")
+            return
+
+        p("\nVPN / PROXY CHECK RESULT\n")
+        p(f"Country : {data['country']}")
+        p(f"ISP     : {data['isp']}")
+        p(f"ORG     : {data['org']}")
+        p(f"Proxy   : {'YES' if data['proxy'] else 'NO'}")
+        p(f"Hosting : {'YES' if data['hosting'] else 'NO'}")
+        p(f"Mobile  : {'YES' if data['mobile'] else 'NO'}")
+
+        if data["proxy"] or data["hosting"]:
+            p("\n⚠️  HIGH CHANCE OF VPN / PROXY")
+        else:
+            p("\n✅ Likely residential IP")
+
+    except:
+        p("\nFailed to check VPN status.")
+
+    input("\nPress Enter...")
+
+# =========================
 # Fake tools
 # =========================
 def system_scan():
@@ -240,7 +277,6 @@ def discord_lookup():
     discord_id = input(PURPLE + "Enter Discord ID: " + RESET)
 
     headers, row = search_discord_id_in_sheet(discord_id)
-
     if not row:
         p("\nNo results found.")
         input("\nPress Enter...")
@@ -266,12 +302,13 @@ def main_menu(permission):
         p("[1] System Scan")
         p("[2] WiFi Device Scan")
         p("[3] IP Information")
-        p("[6] IP Pinger")
-        p("[7] IP Lookup")
+        p("[4] IP Pinger")
+        p("[5] IP Lookup")
+        p("[6] VPN / Proxy Check")
 
         if permission == "admin":
-            p("[4] Admin Panel")
-            p("[5] Discord Lookup")
+            p("[7] Admin Panel")
+            p("[8] Discord Lookup")
 
         p("[0] Exit\n")
 
@@ -283,14 +320,16 @@ def main_menu(permission):
             wifi_scan()
         elif choice == "3":
             ip_tool()
-        elif choice == "4" and permission == "admin":
-            admin_panel()
-        elif choice == "5" and permission == "admin":
-            discord_lookup()
-        elif choice == "6":
+        elif choice == "4":
             ipping()
-        elif choice == "7":
+        elif choice == "5":
             ip_lookup()
+        elif choice == "6":
+            vpn_check()
+        elif choice == "7" and permission == "admin":
+            admin_panel()
+        elif choice == "8" and permission == "admin":
+            discord_lookup()
         elif choice == "0":
             break
         else:
@@ -307,10 +346,9 @@ while True:
     clear()
     p(ASCII_HEADER)
     set_console_title("SmartScreen ATTACK | Awaiting Access Code")
-
     code = input(PURPLE + "Enter Access Code: " + RESET)
-    ok, permission = check_code_google_sheet(code)
 
+    ok, permission = check_code_google_sheet(code)
     if ok:
         break
     else:
