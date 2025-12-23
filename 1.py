@@ -1,113 +1,196 @@
+
+# Snake Multi Tool
+# NOTE: This file is provided as a ready-to-run program.
+
 import turtle
 import time
-import webbrowser
+import os
+import requests
+import csv
+import subprocess
+import socket
+import re
+import sys
 
-# ================= CONFIG =================
-DISCORD_URL = "https://discord.gg/m5cdVhcCsd"
-WEBSITE_URL = "https://snakesquad.gg"
+# =========================
+# Console title
+# =========================
+def set_console_title(title):
+    if os.name == "nt":
+        os.system(f'title "{title}"')
 
-STATUS = "MAINTENANCE MODE"
-ETA = "Unknown – Check Discord"
-VERSION = "Snake Squad Loader v1.0.0"
+# =========================
+# Turtle intro animation (Snake)
+# =========================
+def intro_animation():
+    screen = turtle.Screen()
+    screen.bgcolor("black")
+    screen.setup(width=1.0, height=1.0)
+    screen.title("Snake Tool")
 
-PURPLE = "#9b5cff"
-SOFT_PURPLE = "#c7a6ff"
-DARK_BG = "#0b0614"
+    w = screen.window_width()
+    h = screen.window_height()
 
-# Discord link position (for clicking)
-DISCORD_X = -420
-DISCORD_Y = -120
+    t = turtle.Turtle()
+    t.hideturtle()
+    t.speed(0)
+    t.color("purple")
+    t.width(6)
 
-# ================= SCREEN =================
-screen = turtle.Screen()
-screen.title("Snake Squad | Under Maintenance")
-screen.bgcolor(DARK_BG)
-screen.setup(width=1.0, height=1.0)  # FULLSCREEN
-screen.tracer(0)
+    text_t = turtle.Turtle()
+    text_t.hideturtle()
+    text_t.color("white")
 
-# ================= TEXT WRITER =================
-writer = turtle.Turtle()
-writer.hideturtle()
-writer.penup()
-writer.color(PURPLE)
+    start_x = -w//2 + 50
+    mid_x = 0
+    end_x = w//2 - 50
+    y = 0
 
-def draw_text():
-    writer.clear()
+    turtle.tracer(0)
+    x = start_x
+    while x < mid_x:
+        t.goto(x, y)
+        text_t.clear()
+        text_t.write("Snake Tool", align="center", font=("Courier", 28, "bold"))
+        turtle.update()
+        x += 10
+        time.sleep(0.01)
 
-    # Title
-    writer.goto(0, 280)
-    writer.write("SNAKE SQUAD", align="center",
-                 font=("Courier", 38, "bold"))
+    # pause at center, show only "Snake"
+    text_t.clear()
+    text_t.write("Snake", align="center", font=("Courier", 36, "bold"))
+    turtle.update()
+    time.sleep(1.2)
 
-    writer.goto(0, 235)
-    writer.write("UNDER MAINTENANCE", align="center",
-                 font=("Courier", 18, "normal"))
+    while x < end_x:
+        t.goto(x, y)
+        text_t.clear()
+        text_t.write("Snake Tool", align="center", font=("Courier", 28, "bold"))
+        turtle.update()
+        x += 10
+        time.sleep(0.01)
 
-    # Description
-    writer.goto(0, 185)
-    writer.write("Our systems are currently undergoing maintenance.",
-                 align="center", font=("Courier", 14, "normal"))
+    time.sleep(0.5)
+    screen.bye()
 
-    writer.goto(0, 155)
-    writer.write("The program is temporarily unavailable.",
-                 align="center", font=("Courier", 14, "normal"))
+# =========================
+# Utils
+# =========================
+def clear():
+    os.system("cls" if os.name == "nt" else "clear")
 
-    # Info panel
-    writer.color(SOFT_PURPLE)
+PURPLE = "\033[35m"
+RESET = "\033[0m"
 
-    writer.goto(-420, 60)
-    writer.write(f"STATUS  : {STATUS}", align="left",
-                 font=("Courier", 14, "normal"))
+def p(text=""):
+    print(PURPLE + text + RESET)
 
-    writer.goto(-420, 30)
-    writer.write(f"ETA     : {ETA}", align="left",
-                 font=("Courier", 14, "normal"))
+ASCII_HEADER = r"""
+███████╗███╗   ██╗ █████╗ ██╗  ██╗███████╗
+██╔════╝████╗  ██║██╔══██╗██║ ██╔╝██╔════╝
+███████╗██╔██╗ ██║███████║█████╔╝ █████╗  
+╚════██║██║╚██╗██║██╔══██║██╔═██╗ ██╔══╝  
+███████║██║ ╚████║██║  ██║██║  ██╗███████╗
+╚══════╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝
+Snake Multi Tool
+"""
 
-    writer.goto(-420, 0)
-    writer.write(f"VERSION : {VERSION}", align="left",
-                 font=("Courier", 14, "normal"))
+# =========================
+# Google Sheet: login check
+# =========================
+def check_code_google_sheet(user_code):
+    SHEET_ID = "1sR8bO58zUTqqYKn0YRaOq-ta2HsgQsXf0FP6DVhARSE"
+    url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
+    try:
+        r = requests.get(url, timeout=5)
+        reader = csv.reader(r.text.splitlines())
+        for row in reader:
+            if len(row) >= 2 and row[0].strip() == user_code:
+                return True, row[1].strip().lower()
+        return False, None
+    except:
+        return False, None
 
-    writer.goto(-420, -60)
-    writer.write("For updates, announcements and support:",
-                 align="left", font=("Courier", 14, "normal"))
+# =========================
+# Admin Port Scanner
+# =========================
+def port_scanner_admin():
+    clear()
+    target = input(PURPLE + "Target IP: " + RESET)
+    p("\nScanning ports 1-10000 (open only)\n")
+    open_ports = []
+    for port in range(1, 10001):
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(0.05)
+            result = s.connect_ex((target, port))
+            if result == 0:
+                open_ports.append(port)
+                p(f"OPEN  -> {port}")
+            s.close()
+        except:
+            pass
+    if not open_ports:
+        p("\nNo open ports found.")
+    input("\nPress Enter...")
 
-    # Clickable Discord link
-    writer.goto(DISCORD_X, DISCORD_Y)
-    writer.write(f"Discord : {DISCORD_URL}",
-                 align="left",
-                 font=("Courier", 14, "underline"))
+# =========================
+# Example User Tools
+# =========================
+def dns_lookup():
+    clear()
+    host = input(PURPLE + "Hostname: " + RESET)
+    try:
+        ip = socket.gethostbyname(host)
+        p(f"IP: {ip}")
+    except:
+        p("Lookup failed.")
+    input("\nPress Enter...")
 
-    # Website (non-clickable, info only)
-    writer.goto(-420, -150)
-    writer.write(f"Website : {WEBSITE_URL}",
-                 align="left", font=("Courier", 14, "normal"))
+def whoami():
+    clear()
+    p("Session info")
+    p(f"OS: {os.name}")
+    p(f"Python: {sys.version.split()[0]}")
+    input("\nPress Enter...")
 
-    # Footer
-    writer.color(PURPLE)
-    writer.goto(0, -300)
-    writer.write("© Snake Squad – Protecting the FiveM Community",
-                 align="center", font=("Courier", 10, "normal"))
+# =========================
+# Menu
+# =========================
+def main_menu(permission):
+    while True:
+        clear()
+        p(ASCII_HEADER)
+        p(f"Logged in as: {permission.upper()}\n")
+        p("[1] DNS Lookup")
+        p("[2] Session Info")
+        if permission == "admin":
+            p("[9] Admin Port Scanner")
+        p("[0] Exit")
+        c = input(PURPLE + "Select: " + RESET)
+        if c == "1":
+            dns_lookup()
+        elif c == "2":
+            whoami()
+        elif c == "9" and permission == "admin":
+            port_scanner_admin()
+        elif c == "0":
+            break
 
-# ================= CLICK HANDLER =================
-def handle_click(x, y):
-    # Bounding box around Discord text
-    if -430 < x < 350 and -140 < y < -105:
-        webbrowser.open(DISCORD_URL)
-
-screen.onclick(handle_click)
-
-# ================= TURTLE ANIMATION =================
-spinner = turtle.Turtle()
-spinner.shape("turtle")
-spinner.color(PURPLE)
-spinner.penup()
-spinner.goto(0, -20)
-spinner.speed(0)
-
-# ================= MAIN LOOP =================
-draw_text()
+# =========================
+# MAIN
+# =========================
+set_console_title("Snake Multi Tool | Initializing")
+intro_animation()
 
 while True:
-    spinner.right(2)
-    screen.update()
-    time.sleep(0.01)
+    clear()
+    p(ASCII_HEADER)
+    code = input(PURPLE + "Enter Access Code: " + RESET)
+    ok, permission = check_code_google_sheet(code)
+    if ok:
+        break
+    p("ACCESS DENIED")
+    time.sleep(2)
+
+main_menu(permission)
