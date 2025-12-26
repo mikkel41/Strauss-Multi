@@ -1,113 +1,309 @@
-import turtle
+import customtkinter as ctk
+import subprocess
+import requests
+import csv
+import threading
+import socket
+import re
 import time
-import webbrowser
 
-# ================= CONFIG =================
-DISCORD_URL = "https://discord.gg/m5cdVhcCsd"
-WEBSITE_URL = "https://snakesquad.gg"
+# =====================================================
+# UI CONFIG
+# =====================================================
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("green")
 
-STATUS = "MAINTENANCE MODE"
-ETA = "Unknown – Check Discord"
-VERSION = "Snake Squad Loader v1.0.0"
+APP_TITLE = "SmartScreen ATTACK"
+FONT = ("Consolas", 14)
 
-PURPLE = "#9b5cff"
-SOFT_PURPLE = "#c7a6ff"
-DARK_BG = "#0b0614"
+# =====================================================
+# ASCII
+# =====================================================
+SNAKE_ASCII = r"""
+███████╗███╗   ██╗ █████╗ ██╗  ██╗███████╗
+██╔════╝████╗  ██║██╔══██╗██║ ██╔╝██╔════╝
+███████╗██╔██╗ ██║███████║█████╔╝ █████╗  
+╚════██║██║╚██╗██║██╔══██║██╔═██╗ ██╔══╝  
+███████║██║ ╚████║██║  ██║██║  ██╗███████╗
+╚══════╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝
+"""
 
-# Discord link position (for clicking)
-DISCORD_X = -420
-DISCORD_Y = -120
+# =====================================================
+# GOOGLE SHEETS (SAMME SOM DIT GAMLE SCRIPT)
+# =====================================================
+LOGIN_SHEET_ID = "1sR8bO58zUTqqYKn0YRaOq-ta2HsgQsXf0FP6DVhARSE"
+DISCORD_SHEET_ID = "1SywSyu3ynW9cnc_WoSed7CiMSLEWeKiKUI2XR7BfLhY"
 
-# ================= SCREEN =================
-screen = turtle.Screen()
-screen.title("Snake Squad | Under Maintenance")
-screen.bgcolor(DARK_BG)
-screen.setup(width=1.0, height=1.0)  # FULLSCREEN
-screen.tracer(0)
+# =====================================================
+# UTILS
+# =====================================================
+def threaded(func):
+    threading.Thread(target=func, daemon=True).start()
 
-# ================= TEXT WRITER =================
-writer = turtle.Turtle()
-writer.hideturtle()
-writer.penup()
-writer.color(PURPLE)
+def valid_ip(ip):
+    return re.match(r"^\d{1,3}(\.\d{1,3}){3}$", ip)
 
-def draw_text():
-    writer.clear()
+# =====================================================
+# GOOGLE SHEET FUNCTIONS
+# =====================================================
+def check_code_google_sheet(code):
+    url = f"https://docs.google.com/spreadsheets/d/{LOGIN_SHEET_ID}/export?format=csv"
+    try:
+        r = requests.get(url, timeout=5)
+        reader = csv.reader(r.text.splitlines())
+        for row in reader:
+            if len(row) >= 2 and code == row[0].strip():
+                return True, row[1].strip().lower()
+    except:
+        pass
+    return False, None
 
-    # Title
-    writer.goto(0, 280)
-    writer.write("SNAKE SQUAD", align="center",
-                 font=("Courier", 38, "bold"))
+def discord_lookup_sheet(discord_id):
+    url = f"https://docs.google.com/spreadsheets/d/{DISCORD_SHEET_ID}/export?format=csv"
+    try:
+        r = requests.get(url, timeout=10)
+        reader = csv.reader(r.text.splitlines())
+        headers = next(reader)
+        for row in reader:
+            if f"discord:{discord_id}".lower() in " ".join(row).lower():
+                return headers, row
+    except:
+        pass
+    return None, None
 
-    writer.goto(0, 235)
-    writer.write("UNDER MAINTENANCE", align="center",
-                 font=("Courier", 18, "normal"))
+# =====================================================
+# APP
+# =====================================================
+class SmartScreen(ctk.CTk):
+    def __init__(self):
+        super().__init__()
 
-    # Description
-    writer.goto(0, 185)
-    writer.write("Our systems are currently undergoing maintenance.",
-                 align="center", font=("Courier", 14, "normal"))
+        # === FÅ SKÆRMSTØRRELSE (RIGTIG FULLSCREEN) ===
+        self.update_idletasks()
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
 
-    writer.goto(0, 155)
-    writer.write("The program is temporarily unavailable.",
-                 align="center", font=("Courier", 14, "normal"))
+        # === TILPAS VINDUE TIL SKÆRM ===
+        self.geometry(f"{screen_width}x{screen_height}+0+0")
 
-    # Info panel
-    writer.color(SOFT_PURPLE)
+        # === FJERN TITELBAR / RAMME ===
+        self.overrideredirect(True)
 
-    writer.goto(-420, 60)
-    writer.write(f"STATUS  : {STATUS}", align="left",
-                 font=("Courier", 14, "normal"))
+        # === WINDOWS FOCUS FIX ===
+        self.attributes("-topmost", True)
+        self.after(100, lambda: self.attributes("-topmost", False))
 
-    writer.goto(-420, 30)
-    writer.write(f"ETA     : {ETA}", align="left",
-                 font=("Courier", 14, "normal"))
+        self.title(APP_TITLE)
 
-    writer.goto(-420, 0)
-    writer.write(f"VERSION : {VERSION}", align="left",
-                 font=("Courier", 14, "normal"))
+        self.role = None
 
-    writer.goto(-420, -60)
-    writer.write("For updates, announcements and support:",
-                 align="left", font=("Courier", 14, "normal"))
+        # LOGIN FRAME
+        self.login_frame = ctk.CTkFrame(self)
+        self.login_frame.pack(fill="both", expand=True)
 
-    # Clickable Discord link
-    writer.goto(DISCORD_X, DISCORD_Y)
-    writer.write(f"Discord : {DISCORD_URL}",
-                 align="left",
-                 font=("Courier", 14, "underline"))
+        self.build_login()
 
-    # Website (non-clickable, info only)
-    writer.goto(-420, -150)
-    writer.write(f"Website : {WEBSITE_URL}",
-                 align="left", font=("Courier", 14, "normal"))
+    # ---------------- LOGIN ----------------
+    def build_login(self):
+        ctk.CTkLabel(
+            self.login_frame,
+            text="SMARTSCREEN ATTACK",
+            font=("Consolas", 28, "bold"),
+            text_color="#00ff7f"
+        ).pack(pady=40)
 
-    # Footer
-    writer.color(PURPLE)
-    writer.goto(0, -300)
-    writer.write("© Snake Squad – Protecting the FiveM Community",
-                 align="center", font=("Courier", 10, "normal"))
+        self.code_entry = ctk.CTkEntry(
+            self.login_frame,
+            placeholder_text="Access Code",
+            width=320
+        )
+        self.code_entry.pack(pady=10)
 
-# ================= CLICK HANDLER =================
-def handle_click(x, y):
-    # Bounding box around Discord text
-    if -430 < x < 350 and -140 < y < -105:
-        webbrowser.open(DISCORD_URL)
+        self.login_status = ctk.CTkLabel(self.login_frame, text="")
+        self.login_status.pack(pady=10)
 
-screen.onclick(handle_click)
+        ctk.CTkButton(
+            self.login_frame,
+            text="LOGIN",
+            command=lambda: threaded(self.login)
+        ).pack(pady=20)
 
-# ================= TURTLE ANIMATION =================
-spinner = turtle.Turtle()
-spinner.shape("turtle")
-spinner.color(PURPLE)
-spinner.penup()
-spinner.goto(0, -20)
-spinner.speed(0)
+    def login(self):
+        code = self.code_entry.get()
+        ok, role = check_code_google_sheet(code)
 
-# ================= MAIN LOOP =================
-draw_text()
+        if ok:
+            self.role = role
+            self.login_frame.destroy()
+            self.build_main_ui()
+        else:
+            self.login_status.configure(text="ACCESS DENIED", text_color="red")
 
-while True:
-    spinner.right(2)
-    screen.update()
-    time.sleep(0.01)
+    # ---------------- MAIN UI ----------------
+    def build_main_ui(self):
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_rowconfigure(1, weight=1)
+
+        # TOP BAR (SNAKE)
+        self.topbar = ctk.CTkFrame(self, height=140)
+        self.topbar.grid(row=0, column=0, columnspan=2, sticky="ew")
+        self.topbar.grid_propagate(False)
+
+        ctk.CTkLabel(
+            self.topbar,
+            text=SNAKE_ASCII,
+            font=("Consolas", 16),
+            text_color="#00ff7f",
+            justify="left"
+        ).pack(anchor="w", padx=20, pady=10)
+
+        # SIDEBAR
+        self.sidebar = ctk.CTkFrame(self, width=240)
+        self.sidebar.grid(row=1, column=0, sticky="ns")
+
+        ctk.CTkLabel(
+            self.sidebar,
+            text=f"LOGGED IN: {self.role.upper()}",
+            font=("Consolas", 14)
+        ).pack(pady=15)
+
+        buttons = [
+            ("System Scan", self.system_scan),
+            ("WiFi Scan", self.wifi_scan),
+            ("IP Tool", self.ip_tool),
+            ("IP Pinger", self.ip_pinger),
+            ("IP Lookup", self.ip_lookup),
+            ("VPN / Proxy Check", self.vpn_check)
+        ]
+
+        if self.role == "admin":
+            buttons += [
+                ("Discord Lookup", self.discord_lookup),
+                ("Admin Panel", self.admin_panel)
+            ]
+
+        buttons += [
+            ("Clear Output", self.clear_output),
+            ("EXIT", self.quit)
+        ]
+
+        for text, cmd in buttons:
+            ctk.CTkButton(
+                self.sidebar,
+                text=text,
+                command=lambda c=cmd: threaded(c)
+            ).pack(pady=5, padx=10, fill="x")
+
+        # OUTPUT
+        self.output = ctk.CTkTextbox(
+            self,
+            font=FONT,
+            text_color="#00ff7f",
+            fg_color="#050505"
+        )
+        self.output.grid(row=1, column=1, sticky="nsew", padx=10, pady=10)
+
+        self.log(">> SmartScreen ATTACK READY")
+
+    # ---------------- OUTPUT ----------------
+    def log(self, text):
+        self.output.insert("end", text + "\n")
+        self.output.see("end")
+
+    def clear_output(self):
+        self.output.delete("1.0", "end")
+
+    # ---------------- FUNCTIONS ----------------
+    def system_scan(self):
+        self.log("\n[ SYSTEM SCAN ]")
+        for i in range(0, 101, 10):
+            self.log(f"[{i}%] Processing...")
+            time.sleep(0.2)
+        self.log("[✓] Scan complete\n")
+
+    def wifi_scan(self):
+        self.log("\n[ WIFI SCAN ]")
+        try:
+            out = subprocess.check_output("arp -a", shell=True, text=True)
+            ips = sorted(set(re.findall(r"\d+\.\d+\.\d+\.\d+", out)))
+            for ip in ips:
+                try:
+                    ping = subprocess.check_output(f"ping -n 1 -w 500 {ip}", shell=True, text=True)
+                    ms = re.search(r"(\d+)ms", ping)
+                    ms = ms.group(1) + "ms" if ms else "Timeout"
+                except:
+                    ms = "Timeout"
+
+                try:
+                    host = socket.gethostbyaddr(ip)[0]
+                except:
+                    host = "Unknown"
+
+                self.log(f"{ip:<16} {ms:<8} {host}")
+        except:
+            self.log("[✖] WiFi scan failed")
+
+    def ip_tool(self):
+        ip = ctk.CTkInputDialog(title="IP Tool", text="Enter IP:").get_input()
+        if ip:
+            self.log(f"\nTarget IP: {ip}")
+            self.log("Country: UNKNOWN")
+            self.log("ISP: UNKNOWN")
+
+    def ip_pinger(self):
+        ip = ctk.CTkInputDialog(title="Ping", text="Enter IP:").get_input()
+        if not valid_ip(ip):
+            self.log("[✖] Invalid IP")
+            return
+        try:
+            out = subprocess.check_output(f"ping {ip}", shell=True, text=True)
+            self.log(out)
+        except:
+            self.log("[✖] Ping failed")
+
+    def ip_lookup(self):
+        ip = ctk.CTkInputDialog(title="IP Lookup", text="Enter IP:").get_input()
+        if not valid_ip(ip):
+            self.log("[✖] Invalid IP")
+            return
+        data = requests.get(f"http://ip-api.com/json/{ip}", timeout=5).json()
+        if data.get("status") != "success":
+            self.log("[✖] Lookup failed")
+            return
+        for k in ["country", "regionName", "city", "zip", "isp", "org", "as"]:
+            self.log(f"{k.upper():<12}: {data.get(k)}")
+
+    def vpn_check(self):
+        ip = ctk.CTkInputDialog(title="VPN Check", text="Enter IP:").get_input()
+        if not valid_ip(ip):
+            self.log("[✖] Invalid IP")
+            return
+        data = requests.get(
+            f"http://ip-api.com/json/{ip}?fields=status,proxy,hosting,mobile,country,isp",
+            timeout=5
+        ).json()
+        self.log(f"Country : {data['country']}")
+        self.log(f"ISP     : {data['isp']}")
+        self.log(f"Proxy   : {data['proxy']}")
+        self.log(f"Hosting : {data['hosting']}")
+        self.log(f"Mobile  : {data['mobile']}")
+
+    def discord_lookup(self):
+        did = ctk.CTkInputDialog(title="Discord Lookup", text="Enter Discord ID:").get_input()
+        headers, row = discord_lookup_sheet(did)
+        if not row:
+            self.log("No results found")
+            return
+        for h, v in zip(headers, row):
+            self.log(f"{h}: {v}")
+
+    def admin_panel(self):
+        self.log("\n[ ADMIN PANEL ]")
+        self.log("• Full access granted")
+
+# =====================================================
+# START
+# =====================================================
+if __name__ == "__main__":
+    app = SmartScreen()
+    app.mainloop()
