@@ -1,358 +1,113 @@
-# =========================
-# Imports
-# =========================
 import turtle
 import time
-import os
-import requests
-import csv
-import subprocess
-import socket
-import re
-import sys
+import webbrowser
 
-# =========================
-# Console title
-# =========================
-def set_console_title(title):
-    if os.name == "nt":
-        os.system(f'title "{title}"')
+# ================= CONFIG =================
+DISCORD_URL = "https://discord.gg/m5cdVhcCsd"
+WEBSITE_URL = "https://snakesquad.gg"
 
-# =========================
-# Turtle intro animation
-# =========================
-def intro_animation():
-    screen = turtle.Screen()
-    screen.bgcolor("black")
-    screen.setup(width=1.0, height=1.0)
-    screen.title("SmartScreen ATTACK")
+STATUS = "MAINTENANCE MODE"
+ETA = "Unknown – Check Discord"
+VERSION = "Snake Squad Loader v1.0.0"
 
-    w = screen.window_width()
-    h = screen.window_height()
+PURPLE = "#9b5cff"
+SOFT_PURPLE = "#c7a6ff"
+DARK_BG = "#0b0614"
 
-    t = turtle.Turtle()
-    t.color("purple")
-    t.speed(0)
-    t.width(3)
-    t.hideturtle()
+# Discord link position (for clicking)
+DISCORD_X = -420
+DISCORD_Y = -120
 
-    a = 0
-    b = 0
-    scale = min(w, h) / 800
+# ================= SCREEN =================
+screen = turtle.Screen()
+screen.title("Snake Squad | Under Maintenance")
+screen.bgcolor(DARK_BG)
+screen.setup(width=1.0, height=1.0)  # FULLSCREEN
+screen.tracer(0)
 
-    t.penup()
-    t.goto(0, h // 2 - 120)
-    t.pendown()
+# ================= TEXT WRITER =================
+writer = turtle.Turtle()
+writer.hideturtle()
+writer.penup()
+writer.color(PURPLE)
 
-    turtle.tracer(0)
-    while b < 220:
-        t.forward(a * scale)
-        t.right(b)
-        a += 3
-        b += 1
-        turtle.update()
-        time.sleep(0.01)
+def draw_text():
+    writer.clear()
 
-    time.sleep(0.5)
-    screen.bye()
-    time.sleep(0.3)
+    # Title
+    writer.goto(0, 280)
+    writer.write("SNAKE SQUAD", align="center",
+                 font=("Courier", 38, "bold"))
 
-# =========================
-# Utils
-# =========================
-def clear():
-    os.system("cls" if os.name == "nt" else "clear")
+    writer.goto(0, 235)
+    writer.write("UNDER MAINTENANCE", align="center",
+                 font=("Courier", 18, "normal"))
 
-PURPLE = "\033[35m"
-RESET = "\033[0m"
+    # Description
+    writer.goto(0, 185)
+    writer.write("Our systems are currently undergoing maintenance.",
+                 align="center", font=("Courier", 14, "normal"))
 
-def p(text=""):
-    print(PURPLE + text + RESET)
+    writer.goto(0, 155)
+    writer.write("The program is temporarily unavailable.",
+                 align="center", font=("Courier", 14, "normal"))
 
-ASCII_HEADER = r"""
-  _________ __                                         _____   __    __                 __    
- /   _____//  |_____________   __ __  ______ ______   /  _  \_/  |__/  |______    ____ |  | __
- \_____  \\   __\_  __ \__  \ |  |  \/  ___//  ___/  /  /_\  \   __\   __\__  \ _/ ___\|  |/ /
- /        \|  |  |  | \// __ \|  |  /\___ \ \___ \  /    |    \  |  |  |  / __ \\  \___|    <
-/_______  /|__|  |__|  (____  /____//____  >____  > \____|__  /__|  |__| (____  /\___  >__|_ \
-        \/                  \/           \/     \/          \/                \/     \/      
-"""
+    # Info panel
+    writer.color(SOFT_PURPLE)
 
-# =========================
-# Google Sheet: login check
-# =========================
-def check_code_google_sheet(user_code):
-    SHEET_ID = "1sR8bO58zUTqqYKn0YRaOq-ta2HsgQsXf0FP6DVhARSE"
-    url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
+    writer.goto(-420, 60)
+    writer.write(f"STATUS  : {STATUS}", align="left",
+                 font=("Courier", 14, "normal"))
 
-    try:
-        response = requests.get(url, timeout=5)
-        response.raise_for_status()
-        reader = csv.reader(response.text.splitlines())
+    writer.goto(-420, 30)
+    writer.write(f"ETA     : {ETA}", align="left",
+                 font=("Courier", 14, "normal"))
 
-        for row in reader:
-            if len(row) >= 2 and user_code == row[0].strip():
-                return True, row[1].strip().lower()
+    writer.goto(-420, 0)
+    writer.write(f"VERSION : {VERSION}", align="left",
+                 font=("Courier", 14, "normal"))
 
-        return False, None
-    except:
-        return False, None
+    writer.goto(-420, -60)
+    writer.write("For updates, announcements and support:",
+                 align="left", font=("Courier", 14, "normal"))
 
-# =========================
-# Google Sheet: Discord DB
-# =========================
-def search_discord_id_in_sheet(discord_id):
-    SHEET_ID = "1SywSyu3ynW9cnc_WoSed7CiMSLEWeKiKUI2XR7BfLhY"
-    url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
+    # Clickable Discord link
+    writer.goto(DISCORD_X, DISCORD_Y)
+    writer.write(f"Discord : {DISCORD_URL}",
+                 align="left",
+                 font=("Courier", 14, "underline"))
 
-    try:
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        reader = csv.reader(response.text.splitlines())
+    # Website (non-clickable, info only)
+    writer.goto(-420, -150)
+    writer.write(f"Website : {WEBSITE_URL}",
+                 align="left", font=("Courier", 14, "normal"))
 
-        headers = next(reader)
-        search_value = f"discord:{discord_id}".lower()
+    # Footer
+    writer.color(PURPLE)
+    writer.goto(0, -300)
+    writer.write("© Snake Squad – Protecting the FiveM Community",
+                 align="center", font=("Courier", 10, "normal"))
 
-        for row in reader:
-            if search_value in " ".join(row).lower():
-                return headers, row
+# ================= CLICK HANDLER =================
+def handle_click(x, y):
+    # Bounding box around Discord text
+    if -430 < x < 350 and -140 < y < -105:
+        webbrowser.open(DISCORD_URL)
 
-        return None, None
-    except:
-        return None, None
+screen.onclick(handle_click)
 
-# =========================
-# WiFi scan
-# =========================
-def wifi_scan():
-    clear()
-    p("Scanning WiFi devices...\n")
-    time.sleep(1)
+# ================= TURTLE ANIMATION =================
+spinner = turtle.Turtle()
+spinner.shape("turtle")
+spinner.color(PURPLE)
+spinner.penup()
+spinner.goto(0, -20)
+spinner.speed(0)
 
-    try:
-        output = subprocess.check_output("arp -a", shell=True, text=True)
-        ips = sorted(set(re.findall(r"\d+\.\d+\.\d+\.\d+", output)))
-    except:
-        p("Failed to scan network.")
-        input("\nPress Enter...")
-        return
-
-    p(f"{'IP':<18} {'Ping':<10} Device")
-    p("-" * 60)
-
-    for ip in ips:
-        try:
-            ping_out = subprocess.check_output(
-                f"ping -n 1 -w 500 {ip}", shell=True, text=True
-            )
-            ping = re.search(r"(\d+)ms", ping_out)
-            ping_time = ping.group(1) + " ms" if ping else "Timeout"
-        except:
-            ping_time = "Timeout"
-
-        try:
-            hostname = socket.gethostbyaddr(ip)[0]
-        except:
-            hostname = "Unknown"
-
-        p(f"{ip:<18} {ping_time:<10} {hostname}")
-
-    input("\nPress Enter...")
-
-# =========================
-# IP Pinger
-# =========================
-def ipping():
-    clear()
-    ip = input(PURPLE + "Enter IP to ping: " + RESET)
-    try:
-        subprocess.call(f"ping {ip}", shell=True)
-    except:
-        p("Ping failed.")
-    input("\nPress Enter...")
-
-# =========================
-# IP Lookup
-# =========================
-def ip_lookup():
-    clear()
-    ip = input(PURPLE + "Enter IP for lookup: " + RESET)
-
-    if not re.match(r"^\d{1,3}(\.\d{1,3}){3}$", ip):
-        p("\nInvalid IP format.")
-        input("\nPress Enter...")
-        return
-
-    try:
-        url = f"http://ip-api.com/json/{ip}?fields=status,country,regionName,city,zip,lat,lon,isp,org,as"
-        data = requests.get(url, timeout=5).json()
-
-        if data.get("status") != "success":
-            p("\nLookup failed.")
-            input("\nPress Enter...")
-            return
-
-        p("\nIP LOOKUP RESULT\n")
-        p(f"Country : {data['country']}")
-        p(f"Region  : {data['regionName']}")
-        p(f"City    : {data['city']}")
-        p(f"ZIP     : {data['zip']}")
-        p(f"ISP     : {data['isp']}")
-        p(f"ORG     : {data['org']}")
-        p(f"AS      : {data['as']}")
-        p(f"Coords  : {data['lat']}, {data['lon']}")
-
-    except:
-        p("\nFailed to fetch IP info.")
-
-    input("\nPress Enter...")
-
-# =========================
-# VPN / Proxy Checker
-# =========================
-def vpn_check():
-    clear()
-    ip = input(PURPLE + "Enter IP to check VPN/Proxy: " + RESET)
-
-    if not re.match(r"^\d{1,3}(\.\d{1,3}){3}$", ip):
-        p("\nInvalid IP format.")
-        input("\nPress Enter...")
-        return
-
-    try:
-        url = f"http://ip-api.com/json/{ip}?fields=status,country,isp,org,proxy,hosting,mobile"
-        data = requests.get(url, timeout=5).json()
-
-        if data.get("status") != "success":
-            p("\nLookup failed.")
-            input("\nPress Enter...")
-            return
-
-        p("\nVPN / PROXY CHECK RESULT\n")
-        p(f"Country : {data['country']}")
-        p(f"ISP     : {data['isp']}")
-        p(f"ORG     : {data['org']}")
-        p(f"Proxy   : {'YES' if data['proxy'] else 'NO'}")
-        p(f"Hosting : {'YES' if data['hosting'] else 'NO'}")
-        p(f"Mobile  : {'YES' if data['mobile'] else 'NO'}")
-
-        if data["proxy"] or data["hosting"]:
-            p("\n⚠️  HIGH CHANCE OF VPN / PROXY")
-        else:
-            p("\n✅ Likely residential IP")
-
-    except:
-        p("\nFailed to check VPN status.")
-
-    input("\nPress Enter...")
-
-# =========================
-# Fake tools
-# =========================
-def system_scan():
-    clear()
-    p("Scanning system...\n")
-    for i in range(0, 101, 10):
-        p(f"[{i}%] Processing")
-        time.sleep(0.2)
-    input("\nPress Enter...")
-
-def ip_tool():
-    clear()
-    ip = input(PURPLE + "Enter IP: " + RESET)
-    p(f"\nTarget: {ip}")
-    p("Country: UNKNOWN")
-    p("ISP: UNKNOWN")
-    input("\nPress Enter...")
-
-def admin_panel():
-    clear()
-    p("ADMIN PANEL\n")
-    p("• Full access")
-    input("\nPress Enter...")
-
-def discord_lookup():
-    clear()
-    p("DISCORD DATABASE LOOKUP\n")
-    discord_id = input(PURPLE + "Enter Discord ID: " + RESET)
-
-    headers, row = search_discord_id_in_sheet(discord_id)
-    if not row:
-        p("\nNo results found.")
-        input("\nPress Enter...")
-        return
-
-    p("\nMATCH FOUND:\n")
-    for h, v in zip(headers, row):
-        p(f"{h}: {v}")
-
-    input("\nPress Enter...")
-
-# =========================
-# Menu
-# =========================
-def main_menu(permission):
-    set_console_title(f"SmartScreen ATTACK | {permission.upper()}")
-
-    while True:
-        clear()
-        p(ASCII_HEADER)
-        p(f"Logged in as: {permission.upper()}\n")
-
-        p("[1] System Scan")
-        p("[2] WiFi Device Scan")
-        p("[3] IP Information")
-        p("[4] IP Pinger")
-        p("[5] IP Lookup")
-        p("[6] VPN / Proxy Check")
-
-        if permission == "admin":
-            p("[7] Admin Panel")
-            p("[8] Discord Lookup")
-
-        p("[0] Exit\n")
-
-        choice = input(PURPLE + "Select option: " + RESET)
-
-        if choice == "1":
-            system_scan()
-        elif choice == "2":
-            wifi_scan()
-        elif choice == "3":
-            ip_tool()
-        elif choice == "4":
-            ipping()
-        elif choice == "5":
-            ip_lookup()
-        elif choice == "6":
-            vpn_check()
-        elif choice == "7" and permission == "admin":
-            admin_panel()
-        elif choice == "8" and permission == "admin":
-            discord_lookup()
-        elif choice == "0":
-            break
-        else:
-            p("ACCESS DENIED OR INVALID OPTION")
-            time.sleep(1.5)
-
-# =========================
-# MAIN
-# =========================
-set_console_title("SmartScreen ATTACK | Initializing")
-intro_animation()
+# ================= MAIN LOOP =================
+draw_text()
 
 while True:
-    clear()
-    p(ASCII_HEADER)
-    set_console_title("SmartScreen ATTACK | Awaiting Access Code")
-    code = input(PURPLE + "Enter Access Code: " + RESET)
-
-    ok, permission = check_code_google_sheet(code)
-    if ok:
-        break
-    else:
-        p("\nACCESS DENIED")
-        time.sleep(2)
-
-main_menu(permission)
+    spinner.right(2)
+    screen.update()
+    time.sleep(0.01)
