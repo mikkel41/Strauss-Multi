@@ -1,6 +1,4 @@
-# =========================
-# Imports
-# =========================
+
 import turtle
 import time
 import os
@@ -9,53 +7,29 @@ import csv
 import subprocess
 import socket
 import re
-import sys
+import random
 
 # =========================
-# Console title
+# Global config
 # =========================
-def set_console_title(title):
-    if os.name == "nt":
-        os.system(f'title "{title}"')
+URL = "https://raw.githubusercontent.com/mikkel41/DD0S/refs/heads/main/Main"
 
 # =========================
-# Turtle intro animation
+# ANSI COLORS (RED HACKER)
 # =========================
-def intro_animation():
-    screen = turtle.Screen()
-    screen.bgcolor("black")
-    screen.setup(width=1.0, height=1.0)
-    screen.title("SmartScreen ATTACK")
+RESET = "\033[0m"
+DIM   = "\033[2m"
+RED   = "\033[91m"
+DARK  = "\033[31m"
+GRAY  = "\033[90m"
+YEL   = "\033[93m"
 
-    w = screen.window_width()
-    h = screen.window_height()
-
-    t = turtle.Turtle()
-    t.color("purple")
-    t.speed(0)
-    t.width(3)
-    t.hideturtle()
-
-    a = 0
-    b = 0
-    scale = min(w, h) / 800
-
-    t.penup()
-    t.goto(0, h // 2 - 120)
-    t.pendown()
-
-    turtle.tracer(0)
-    while b < 220:
-        t.forward(a * scale)
-        t.right(b)
-        a += 3
-        b += 1
-        turtle.update()
-        time.sleep(0.01)
-
-    time.sleep(0.5)
-    screen.bye()
-    time.sleep(0.3)
+def red(t=""):  print(RED + t + RESET)
+def dark(t=""): print(DARK + t + RESET)
+def warn(t=""): print(YEL + "⚠ " + t + RESET)
+def err(t=""):  print(RED + "✖ " + t + RESET)
+def ok(t=""):   print(RED + "✔ " + t + RESET)
+def dim(t=""):  print(DIM + t + RESET)
 
 # =========================
 # Utils
@@ -63,296 +37,203 @@ def intro_animation():
 def clear():
     os.system("cls" if os.name == "nt" else "clear")
 
-PURPLE = "\033[35m"
-RESET = "\033[0m"
-
-def p(text=""):
-    print(PURPLE + text + RESET)
-
-ASCII_HEADER = r"""
-  _________ __                                         _____   __    __                 __    
- /   _____//  |_____________   __ __  ______ ______   /  _  \_/  |__/  |______    ____ |  | __
- \_____  \\   __\_  __ \__  \ |  |  \/  ___//  ___/  /  /_\  \   __\   __\__  \ _/ ___\|  |/ /
- /        \|  |  |  | \// __ \|  |  /\___ \ \___ \  /    |    \  |  |  |  / __ \\  \___|    <
-/_______  /|__|  |__|  (____  /____//____  >____  > \____|__  /__|  |__| (____  /\___  >__|_ \
-        \/                  \/           \/     \/          \/                \/     \/      
-"""
+def set_console_title(title):
+    if os.name == "nt":
+        os.system(f'title "{title}"')
 
 # =========================
-# Google Sheet: login check
+# GLITCH HEADER
 # =========================
-def check_code_google_sheet(user_code):
+BASE_HEADER = [
+" ██████╗ ██████╗ ██╗███╗   ███╗    ██████╗ ███████╗ █████╗ ██████╗ ███████╗██████╗ ",
+"██╔════╝ ██╔══██╗██║████╗ ████║    ██╔══██╗██╔════╝██╔══██╗██╔══██╗██╔════╝██╔══██╗",
+"██║  ███╗██████╔╝██║██╔████╔██║    ██████╔╝█████╗  ███████║██████╔╝█████╗  ██████╔╝",
+"██║   ██║██╔══██╗██║██║╚██╔╝██║    ██╔══██╗██╔══╝  ██╔══██║██╔═══╝ ██╔══╝  ██╔══██╗",
+"╚██████╔╝██║  ██║██║██║ ╚═╝ ██║    ██║  ██║███████╗██║  ██║██║     ███████╗██║  ██║",
+" ╚═════╝ ╚═╝  ╚═╝╚═╝╚═╝     ╚═╝    ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝",
+"            ── GRIM REAPER :: TERMINAL ACCESS ──"
+]
+
+def glitch(line):
+    chars = "!@#$%^&*<>?/\\|"
+    return "".join(c if random.random() > 0.02 else random.choice(chars) for c in line)
+
+def print_header():
+    for l in BASE_HEADER:
+        print(RED + (glitch(l) if random.random() < 0.35 else l) + RESET)
+
+# =========================
+# Google Sheet login
+# =========================
+def check_code_google_sheet(code):
     SHEET_ID = "1sR8bO58zUTqqYKn0YRaOq-ta2HsgQsXf0FP6DVhARSE"
     url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
-
     try:
-        response = requests.get(url, timeout=5)
-        response.raise_for_status()
-        reader = csv.reader(response.text.splitlines())
-
-        for row in reader:
-            if len(row) >= 2 and user_code == row[0].strip():
+        r = requests.get(url, timeout=5)
+        for row in csv.reader(r.text.splitlines()):
+            if row and row[0].strip() == code:
                 return True, row[1].strip().lower()
-
-        return False, None
     except:
-        return False, None
+        pass
+    return False, None
 
 # =========================
-# Google Sheet: Discord DB
+# Discord database
 # =========================
 def search_discord_id_in_sheet(discord_id):
     SHEET_ID = "1SywSyu3ynW9cnc_WoSed7CiMSLEWeKiKUI2XR7BfLhY"
     url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
-
     try:
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        reader = csv.reader(response.text.splitlines())
-
+        r = requests.get(url, timeout=10)
+        reader = csv.reader(r.text.splitlines())
         headers = next(reader)
-        search_value = f"discord:{discord_id}".lower()
-
+        search = f"discord:{discord_id}".lower()
         for row in reader:
-            if search_value in " ".join(row).lower():
+            if search in " ".join(row).lower():
                 return headers, row
-
-        return None, None
     except:
-        return None, None
+        pass
+    return None, None
 
 # =========================
-# WiFi scan
+# TOOLS (ALLE)
 # =========================
+def system_scan():
+    clear()
+    red("SYSTEM SCAN INITIATED\n")
+    for i in range(0, 101, 10):
+        dark(f"> scanning :: {i}%")
+        time.sleep(0.15)
+    ok("Scan complete.")
+    input("\nPress Enter...")
+
 def wifi_scan():
     clear()
-    p("Scanning WiFi devices...\n")
-    time.sleep(1)
-
+    red("NETWORK RECON\n")
     try:
         output = subprocess.check_output("arp -a", shell=True, text=True)
         ips = sorted(set(re.findall(r"\d+\.\d+\.\d+\.\d+", output)))
     except:
-        p("Failed to scan network.")
+        err("ARP scan failed.")
         input("\nPress Enter...")
         return
 
-    p(f"{'IP':<18} {'Ping':<10} Device")
-    p("-" * 60)
-
+    red(f"{'IP':<18} {'Ping':<10} Host")
+    red("-"*46)
     for ip in ips:
         try:
-            ping_out = subprocess.check_output(
-                f"ping -n 1 -w 500 {ip}", shell=True, text=True
-            )
-            ping = re.search(r"(\d+)ms", ping_out)
-            ping_time = ping.group(1) + " ms" if ping else "Timeout"
+            ping = subprocess.check_output(f"ping -n 1 -w 500 {ip}", shell=True, text=True)
+            ms = re.search(r"(\d+)ms", ping)
+            ping_time = ms.group(1) + " ms" if ms else "?"
         except:
             ping_time = "Timeout"
-
         try:
-            hostname = socket.gethostbyaddr(ip)[0]
+            host = socket.gethostbyaddr(ip)[0]
         except:
-            hostname = "Unknown"
-
-        p(f"{ip:<18} {ping_time:<10} {hostname}")
-
+            host = "Unknown"
+        print(f"{ip:<18} {ping_time:<10} {host}")
     input("\nPress Enter...")
 
-# =========================
-# IP Pinger
-# =========================
-def ipping():
+def ip_pinger():
     clear()
-    ip = input(PURPLE + "Enter IP to ping: " + RESET)
-    try:
-        subprocess.call(f"ping {ip}", shell=True)
-    except:
-        p("Ping failed.")
+    ip = input(RED + "Ping target > " + RESET)
+    os.system(f"ping {ip}")
     input("\nPress Enter...")
 
-# =========================
-# IP Lookup
-# =========================
 def ip_lookup():
     clear()
-    ip = input(PURPLE + "Enter IP for lookup: " + RESET)
-
-    if not re.match(r"^\d{1,3}(\.\d{1,3}){3}$", ip):
-        p("\nInvalid IP format.")
-        input("\nPress Enter...")
-        return
-
+    ip = input(RED + "Lookup IP > " + RESET)
     try:
-        url = f"http://ip-api.com/json/{ip}?fields=status,country,regionName,city,zip,lat,lon,isp,org,as"
-        data = requests.get(url, timeout=5).json()
-
+        data = requests.get(f"http://ip-api.com/json/{ip}", timeout=5).json()
         if data.get("status") != "success":
-            p("\nLookup failed.")
-            input("\nPress Enter...")
-            return
-
-        p("\nIP LOOKUP RESULT\n")
-        p(f"Country : {data['country']}")
-        p(f"Region  : {data['regionName']}")
-        p(f"City    : {data['city']}")
-        p(f"ZIP     : {data['zip']}")
-        p(f"ISP     : {data['isp']}")
-        p(f"ORG     : {data['org']}")
-        p(f"AS      : {data['as']}")
-        p(f"Coords  : {data['lat']}, {data['lon']}")
-
+            raise Exception
+        ok("IP resolved.")
+        dark(f"Country : {data['country']}")
+        dark(f"City    : {data['city']}")
+        dark(f"ISP     : {data['isp']}")
     except:
-        p("\nFailed to fetch IP info.")
-
-    input("\nPress Enter...")
-
-# =========================
-# VPN / Proxy Checker
-# =========================
-def vpn_check():
-    clear()
-    ip = input(PURPLE + "Enter IP to check VPN/Proxy: " + RESET)
-
-    if not re.match(r"^\d{1,3}(\.\d{1,3}){3}$", ip):
-        p("\nInvalid IP format.")
-        input("\nPress Enter...")
-        return
-
-    try:
-        url = f"http://ip-api.com/json/{ip}?fields=status,country,isp,org,proxy,hosting,mobile"
-        data = requests.get(url, timeout=5).json()
-
-        if data.get("status") != "success":
-            p("\nLookup failed.")
-            input("\nPress Enter...")
-            return
-
-        p("\nVPN / PROXY CHECK RESULT\n")
-        p(f"Country : {data['country']}")
-        p(f"ISP     : {data['isp']}")
-        p(f"ORG     : {data['org']}")
-        p(f"Proxy   : {'YES' if data['proxy'] else 'NO'}")
-        p(f"Hosting : {'YES' if data['hosting'] else 'NO'}")
-        p(f"Mobile  : {'YES' if data['mobile'] else 'NO'}")
-
-        if data["proxy"] or data["hosting"]:
-            p("\n⚠️  HIGH CHANCE OF VPN / PROXY")
-        else:
-            p("\n✅ Likely residential IP")
-
-    except:
-        p("\nFailed to check VPN status.")
-
-    input("\nPress Enter...")
-
-# =========================
-# Fake tools
-# =========================
-def system_scan():
-    clear()
-    p("Scanning system...\n")
-    for i in range(0, 101, 10):
-        p(f"[{i}%] Processing")
-        time.sleep(0.2)
-    input("\nPress Enter...")
-
-def ip_tool():
-    clear()
-    ip = input(PURPLE + "Enter IP: " + RESET)
-    p(f"\nTarget: {ip}")
-    p("Country: UNKNOWN")
-    p("ISP: UNKNOWN")
-    input("\nPress Enter...")
-
-def admin_panel():
-    clear()
-    p("ADMIN PANEL\n")
-    p("• Full access")
+        err("Lookup failed.")
     input("\nPress Enter...")
 
 def discord_lookup():
     clear()
-    p("DISCORD DATABASE LOOKUP\n")
-    discord_id = input(PURPLE + "Enter Discord ID: " + RESET)
-
-    headers, row = search_discord_id_in_sheet(discord_id)
+    did = input(RED + "Discord ID > " + RESET)
+    headers, row = search_discord_id_in_sheet(did)
     if not row:
-        p("\nNo results found.")
-        input("\nPress Enter...")
-        return
-
-    p("\nMATCH FOUND:\n")
-    for h, v in zip(headers, row):
-        p(f"{h}: {v}")
-
+        err("No match found.")
+    else:
+        ok("MATCH FOUND:\n")
+        for h, v in zip(headers, row):
+            dark(f"{h}: {v}")
     input("\nPress Enter...")
 
 # =========================
-# Menu
+# MENU
 # =========================
 def main_menu(permission):
-    set_console_title(f"SmartScreen ATTACK | {permission.upper()}")
-
+    set_console_title(f"Grim Reaper | {permission.upper()}")
     while True:
         clear()
-        p(ASCII_HEADER)
-        p(f"Logged in as: {permission.upper()}\n")
+        print_header()
+        dim(f"Access Level :: {permission.upper()}\n")
 
-        p("[1] System Scan")
-        p("[2] WiFi Device Scan")
-        p("[3] IP Information")
-        p("[4] IP Pinger")
-        p("[5] IP Lookup")
-        p("[6] VPN / Proxy Check")
+        red("[1] System Scan")
+        red("[2] Network Recon")
+        red("[3] IP Lookup")
+        red("[4] IP Pinger")
 
         if permission == "admin":
-            p("[7] Admin Panel")
-            p("[8] Discord Lookup")
+            red("[5] Discord Database Lookup")
+            red("[6] Remote Loader")
 
-        p("[0] Exit\n")
+        red("[0] Exit\n")
 
-        choice = input(PURPLE + "Select option: " + RESET)
+        c = input(RED + "grimreaper@terminal > " + RESET)
 
-        if choice == "1":
-            system_scan()
-        elif choice == "2":
-            wifi_scan()
-        elif choice == "3":
-            ip_tool()
-        elif choice == "4":
-            ipping()
-        elif choice == "5":
-            ip_lookup()
-        elif choice == "6":
-            vpn_check()
-        elif choice == "7" and permission == "admin":
-            admin_panel()
-        elif choice == "8" and permission == "admin":
-            discord_lookup()
-        elif choice == "0":
-            break
+        if c == "1": system_scan()
+        elif c == "2": wifi_scan()
+        elif c == "3": ip_lookup()
+        elif c == "4": ip_pinger()
+        elif c == "5" and permission == "admin": discord_lookup()
+        elif c == "6" and permission == "admin": run_latest()
+        elif c == "0": break
         else:
-            p("ACCESS DENIED OR INVALID OPTION")
-            time.sleep(1.5)
+            warn("Invalid option.")
+            time.sleep(1)
+
+# =========================
+# Remote loader
+# =========================
+def run_latest():
+    clear()
+    red("REMOTE LOADER\n")
+    try:
+        r = requests.get(URL, timeout=10)
+        r.raise_for_status()
+        ok("Payload fetched.")
+        input("\nExecute payload? Press Enter...")
+        exec(r.text, {"__name__": "__main__"})
+    except Exception as e:
+        err("Execution failed.")
+        print(e)
+        input("\nPress Enter...")
 
 # =========================
 # MAIN
 # =========================
-set_console_title("SmartScreen ATTACK | Initializing")
-intro_animation()
+set_console_title("Grim Reaper | Initializing")
 
 while True:
     clear()
-    p(ASCII_HEADER)
-    set_console_title("SmartScreen ATTACK | Awaiting Access Code")
-    code = input(PURPLE + "Enter Access Code: " + RESET)
-
-    ok, permission = check_code_google_sheet(code)
-    if ok:
+    print_header()
+    code = input(RED + "access@grimreaper > " + RESET)
+    ok_login, perm = check_code_google_sheet(code)
+    if ok_login:
+        ok("Access granted.")
+        time.sleep(1)
         break
     else:
-        p("\nACCESS DENIED")
-        time.sleep(2)
+        err("Access denied.")
+        time.sleep(1.5)
 
-main_menu(permission)
+main_menu(perm)
